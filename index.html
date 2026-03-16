@@ -1,82 +1,96 @@
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>Buscador Directo v3</title>
-    <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet" />
-    <style>
-        body { background: #000; color: #fff; font-family: sans-serif; text-align: center; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; padding: 20px; }
-        button { padding: 15px; background: #222; color: #fff; border: 2px solid #444; border-radius: 8px; cursor: pointer; font-weight: bold; }
-        button:active { background: #ff0000; }
-        #status { color: #00ff00; background: #111; padding: 10px; margin: 10px; border-radius: 5px; font-family: monospace; }
-        .video-js { margin: 0 auto; width: 100%; max-width: 800px; border: 1px solid #333; }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>FlixCr Pro GitHub Edition</title>
+  <style>
+    /* Mantenemos tu estilo original de FlixCr Pro */
+    :root { --bg-dark: #000000; --accent: #00a2ff; --text: #ffffff; }
+    body { background: var(--bg-dark); color: var(--text); font-family: sans-serif; margin: 0; overflow: hidden; }
+    #main-app { display: flex; flex-direction: column; height: 100vh; }
+    #video-container { flex: 1; background: #000; position: relative; }
+    .player-frame { width: 100%; height: 100%; border: none; }
+    #controls-panel { background: rgba(15, 17, 23, 0.98); padding: 15px; border-top: 1px solid #222; }
+    .selection-row { display: flex; gap: 10px; }
+    select { flex: 1; background: #111; color: white; padding: 12px; border-radius: 6px; border: 1px solid #333; }
+    .btn-play { background: var(--accent); color: white; border: none; padding: 12px 25px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+    #status-bar { font-size: 12px; color: #ffcc00; padding: 5px; background: #111; }
+  </style>
 </head>
 <body>
 
-    <div id="status">SISTEMA LISTO: Esperando comando...</div>
+<div id="main-app">
+  <div id="status-bar">SISTEMA LISTO - ESPERANDO SELECCIÓN</div>
 
-    <div class="grid">
-        <button onclick="scrapear('https://librefutboltv.su/home1/directv-sports/')">DIRECTV</button>
-        <button onclick="scrapear('https://librefutboltv.su/home1/tudn/')">TUDN</button>
-        <button onclick="scrapear('https://librefutboltv.su/home1/fox-sports/')">FOX SPORTS</button>
-        <button onclick="scrapear('https://librefutboltv.su/home1/espn-premium/')">ESPN PREMIUM</button>
-        <button onclick="scrapear('https://librefutboltv.su/home1/tyc-sports/')">TYC SPORTS</button>
+  <div id="video-container">
+    <video id="hls-player" class="player-frame" controls playsinline crossorigin="anonymous"></video>
+  </div>
+
+  <div id="controls-panel">
+    <div class="selection-row">
+      <select id="stream-select">
+        <option value="https://librefutboltv.su/home1/directv-sports/">DIRECTV SPORTS</option>
+        <option value="https://librefutboltv.su/home1/tudn/">TUDN</option>
+        <option value="https://librefutboltv.su/home1/fox-sports/">FOX SPORTS</option>
+        <option value="https://librefutboltv.su/home1/espn-premium/">ESPN PREMIUM</option>
+        <option value="https://librefutboltv.su/home1/tyc-sports/">TYC SPORTS</option>
+      </select>
+      <button id="play-btn" class="btn-play">REPRODUCIR</button>
     </div>
+  </div>
+</div>
 
-    <video id="player" class="video-js vjs-16-9 vjs-big-play-centered" controls preload="auto"></video>
-
-<script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 <script>
-    const player = videojs('player');
-    const status = document.getElementById('status');
+  const videoEl = document.getElementById('hls-player');
+  const status = document.getElementById('status-bar');
+  let hls = null;
 
-    async function scrapear(targetUrl) {
-        status.innerText = "📡 ACCEDIENDO A LA FUENTE...";
-        player.pause();
+  async function searchAndPlay() {
+    const targetUrl = document.getElementById('stream-select').value;
+    status.innerText = "🔍 BUSCANDO SEÑAL EN TIEMPO REAL CON TU IP...";
+    
+    // SOLUCIÓN AL ERROR DE CORE: Usamos un proxy que no está quemado y que fuerza la respuesta en texto plano
+    // cors-anywhere suele fallar, corsproxy.io es mejor para TVs
+    const proxyUrl = "https://corsproxy.io/?" + encodeURIComponent(targetUrl);
 
-        // Probamos con un proxy diferente (CORS-Proxy.io) que es más rápido para TVs
-        const proxy = "https://corsproxy.io/?" + encodeURIComponent(targetUrl);
+    try {
+      const response = await fetch(proxyUrl);
+      const html = await response.text();
 
-        try {
-            const response = await fetch(proxy);
-            if (!response.ok) throw new Error("Proxy denegado");
-            
-            const html = await response.text();
-            
-            // Buscamos el link m3u8 tal como hacía tu script de Python
-            // Esta regex es más potente: busca cadenas que terminan en .m3u8 pero ignorando carácteres basura
-            const m3u8Regex = /https?:\/\/[^"']+\.m3u8[^"']*/;
-            const match = html.match(m3u8Regex);
+      // Buscamos el link .m3u8 exactamente como hacía tu script de Python
+      // Buscamos el patrón http...m3u8 que está dentro del código de la página
+      const regex = /https?:\/\/[^"']+\.m3u8[^"']*/;
+      const match = html.match(regex);
 
-            if (match) {
-                let cleanUrl = match[0].replace(/\\/g, ""); // Limpia barras inclinadas si vienen del JSON
-                status.innerText = "🎯 ¡LINK CAPTURADO! Cargando buffer...";
-                
-                player.src({ type: 'application/x-mpegURL', src: cleanUrl });
-                player.play();
-            } else {
-                status.innerText = "⚠️ CÓDIGO LEÍDO, PERO NO SE HALLÓ M3U8. Intenta otro canal.";
-            }
-        } catch (e) {
-            status.innerText = "❌ ERROR DE PUENTE: Intentando método alternativo...";
-            // Reintento automático con AllOrigins si el primero falla
-            try {
-                const altProxy = "https://api.allorigins.win/get?url=" + encodeURIComponent(targetUrl);
-                const resAlt = await fetch(altProxy);
-                const jsonAlt = await resAlt.json();
-                const matchAlt = jsonAlt.contents.match(/https?:\/\/[^"']+\.m3u8[^"']*/);
-                if (matchAlt) {
-                    player.src({ type: 'application/x-mpegURL', src: matchAlt[0].replace(/\\/g, "") });
-                    player.play();
-                    status.innerText = "✅ SEÑAL RECUPERADA (Vía Alt).";
-                }
-            } catch (e2) {
-                status.innerText = "🚫 BLOQUEO TOTAL: El sitio de deportes rechaza la conexión.";
-            }
-        }
+      if (match) {
+        let realM3u8 = match[0].replace(/\\/g, ""); // Limpiamos el link de barras raras
+        status.innerText = "✅ SEÑAL ENCONTRADA: REPRODUCIENDO...";
+        startHls(realM3u8);
+      } else {
+        status.innerText = "❌ NO SE ENCONTRÓ LINK M3U8 EN LA PÁGINA.";
+      }
+    } catch (e) {
+      status.innerText = "❌ ERROR DE CONEXIÓN: EL SITIO BLOQUEÓ EL ACCESO.";
+      console.error(e);
     }
+  }
+
+  function startHls(url) {
+    if (hls) { hls.destroy(); }
+    if (Hls.isSupported()) {
+      hls = new Hls();
+      hls.loadSource(url);
+      hls.attachMedia(videoEl);
+      hls.on(Hls.Events.MANIFEST_PARSED, () => videoEl.play());
+    } else {
+      videoEl.src = url;
+      videoEl.play();
+    }
+  }
+
+  document.getElementById('play-btn').onclick = searchAndPlay;
 </script>
 </body>
 </html>
