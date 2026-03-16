@@ -3,80 +3,73 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mi Player TV</title>
+    <title>TV Player Pro</title>
     <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet" />
     <style>
-        body { background: #000; color: #fff; font-family: sans-serif; text-align: center; padding: 10px; }
-        .menu { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 15px; }
-        button { background: #222; color: #eee; border: 1px solid #444; padding: 12px; cursor: pointer; border-radius: 5px; font-weight: bold; }
-        button.active { background: #ff0000; border-color: #ff0000; }
-        .video-js { margin: 0 auto; border: 2px solid #333; }
-        #log { font-size: 12px; color: #888; margin-top: 10px; background: #111; padding: 5px; border-radius: 4px; }
+        body { background: #050505; color: white; font-family: 'Segoe UI', sans-serif; text-align: center; padding: 20px; }
+        .menu { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 20px; }
+        button { background: #1a1a1a; color: #fff; border: 2px solid #333; padding: 15px; cursor: pointer; border-radius: 8px; font-weight: bold; transition: 0.3s; }
+        button:hover { border-color: #ff0000; background: #222; }
+        button.active { background: #ff0000; border-color: #fff; }
+        #player-wrapper { background: #000; border: 1px solid #333; border-radius: 12px; overflow: hidden; }
+        #status { margin-top: 15px; font-size: 14px; color: #ffcc00; font-style: italic; }
     </style>
 </head>
 <body>
 
+    <h2>SELECCIONA UN CANAL</h2>
+    
     <div class="menu">
-        <button onclick="cargar('https://librefutboltv.su/home1/directv-sports/', this)">DIRECTV</button>
-        <button onclick="cargar('https://librefutboltv.su/home1/tudn/', this)">TUDN</button>
-        <button onclick="cargar('https://librefutboltv.su/home1/fox-sports/', this)">FOX SPORTS</button>
-        <button onclick="cargar('https://librefutboltv.su/home1/espn-premium/', this)">ESPN+</button>
-        <button onclick="cargar('https://librefutboltv.su/home1/tyc-sports/', this)">TYC SPORTS</button>
+        <button onclick="play('https://librefutboltv.su/home1/directv-sports/', this)">DIRECTV</button>
+        <button onclick="play('https://librefutboltv.su/home1/tudn/', this)">TUDN</button>
+        <button onclick="play('https://librefutboltv.su/home1/fox-sports/', this)">FOX SPORTS</button>
+        <button onclick="play('https://librefutboltv.su/home1/espn-premium/', this)">ESPN+</button>
+        <button onclick="play('https://librefutboltv.su/home1/tyc-sports/', this)">TYC SPORTS</button>
     </div>
 
-    <video id="hls-player" class="video-js vjs-16-9 vjs-big-play-centered" controls preload="auto"></video>
+    <div id="player-wrapper">
+        <video id="vjs-player" class="video-js vjs-16-9 vjs-big-play-centered" controls preload="auto"></video>
+    </div>
     
-    <div id="log">Estado: Esperando selección...</div>
+    <p id="status">Listo para conectar...</p>
 
 <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
 <script>
-    const player = videojs('hls-player');
-    const log = document.getElementById('log');
+    const player = videojs('vjs-player');
+    const status = document.getElementById('status');
 
-    async function cargar(webUrl, btn) {
-        // Estética de botones
+    async function play(target, btn) {
         document.querySelectorAll('button').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
+        status.innerText = "🔍 Localizando señal segura...";
+
+        // Usamos un proxy alternativo que simula un navegador real (browser headers)
+        const proxy = "https://api.allorigins.win/get?url=";
         
-        log.innerText = "🔄 Conectando con la fuente...";
-        player.pause();
+        try {
+            const res = await fetch(proxy + encodeURIComponent(target));
+            const json = await res.json();
+            const html = json.contents;
 
-        // Lista de puentes CORS para intentar si uno falla
-        const proxies = [
-            "https://api.allorigins.win/get?url=",
-            "https://corsproxy.io/?"
-        ];
-
-        let exito = false;
-
-        for (let proxy of proxies) {
-            try {
-                const finalUrl = proxy + encodeURIComponent(webUrl);
-                const resp = await fetch(finalUrl);
-                const html = proxy.includes("allorigins") ? (await resp.json()).contents : await resp.text();
-                
-                // Expresión regular mejorada para capturar el link m3u8
-                const regex = /(https?:\/\/[^"']+\.m3u8[^"']*)/;
-                const match = html.match(regex);
-
-                if (match) {
-                    let streamUrl = match[1];
-                    // Si el link es relativo (empieza con //), le ponemos https:
-                    if (streamUrl.startsWith('//')) streamUrl = 'https:' + streamUrl;
-
-                    player.src({ type: 'application/x-mpegURL', src: streamUrl });
-                    player.play();
-                    log.innerText = "✅ Señal encontrada. Cargando video...";
-                    exito = true;
-                    break; // Salimos del bucle de proxies si funciona
+            // Intentamos pescar el m3u8 o el iframe del reproductor
+            const m3u8Match = html.match(/(https?:\/\/[^"']+\.m3u8[^"']*)/);
+            
+            if (m3u8Match) {
+                let finalUrl = m3u8Match[1].replace(/\\/g, "");
+                player.src({ type: 'application/x-mpegURL', src: finalUrl });
+                player.play();
+                status.innerText = "✅ Señal establecida.";
+            } else {
+                // Si no hay m3u8 directo, buscamos el "embed"
+                const iframeMatch = html.match(/<iframe.*?src="(.*?)"/);
+                if (iframeMatch) {
+                    status.innerText = "⚠️ La señal requiere apertura directa. Intenta abrir el canal en una pestaña nueva.";
+                } else {
+                    status.innerText = "❌ Canal no disponible en este momento.";
                 }
-            } catch (err) {
-                console.error("Error con proxy:", proxy, err);
             }
-        }
-
-        if (!exito) {
-            log.innerText = "❌ No se pudo extraer la señal. El sitio de deportes podría estar caído o bloqueado.";
+        } catch (e) {
+            status.innerText = "❌ Error de conexión. Reintenta en 5 segundos.";
         }
     }
 </script>
