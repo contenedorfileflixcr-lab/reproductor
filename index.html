@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi TV Online</title>
+    <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet" />
+    <style>
+        body { background: #111; color: white; font-family: sans-serif; text-align: center; margin: 0; padding: 20px; }
+        .container { max-width: 800px; margin: auto; }
+        .menu { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 20px; }
+        button { background: #333; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; font-size: 16px; }
+        button:hover { background: #555; }
+        button.active { background: #e50914; }
+        .video-container { width: 100%; background: black; border-radius: 10px; overflow: hidden; }
+        #status { font-size: 14px; color: #aaa; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>REPRODUCTOR EN VIVO</h2>
+    
+    <div class="menu" id="canal-menu">
+        <button onclick="cargarCanal('https://librefutboltv.su/home1/directv-sports/', this)">DIRECTV</button>
+        <button onclick="cargarCanal('https://librefutboltv.su/home1/tudn/', this)">TUDN</button>
+        <button onclick="cargarCanal('https://librefutboltv.su/home1/fox-sports/', this)">FOX SPORTS</button>
+        <button onclick="cargarCanal('https://librefutboltv.su/home1/espn-premium/', this)">ESPN+</button>
+        <button onclick="cargarCanal('https://librefutboltv.su/home1/tyc-sports/', this)">TYC SPORTS</button>
+    </div>
+
+    <div class="video-container">
+        <video id="player" class="video-js vjs-16-9 vjs-big-play-centered" controls preload="auto">
+            <p class="vjs-no-js">Tu navegador no soporta video.</p>
+        </video>
+    </div>
+    
+    <p id="status">Selecciona un canal para comenzar...</p>
+</div>
+
+<script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
+
+<script>
+    var player = videojs('player');
+    var statusTxt = document.getElementById('status');
+
+    async function cargarCanal(urlWeb, btn) {
+        // Estilo de botones
+        document.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        statusTxt.innerText = "Buscando señal con tu IP...";
+        player.pause();
+
+        try {
+            // Usamos un proxy CORS para poder leer la web externa desde el navegador
+            const proxyUrl = "https://api.allorigins.win/get?url=" + encodeURIComponent(urlWeb);
+            const response = await fetch(proxyUrl);
+            const data = await response.json();
+            
+            // Buscamos el link .m3u8 dentro del código fuente de la página
+            const regex = /https:\/\/[^"']+\.m3u8[^"']*/;
+            const match = data.contents.match(regex);
+
+            if (match) {
+                let streamUrl = match[0];
+                console.log("Link capturado: " + streamUrl);
+                
+                player.src({ type: 'application/x-mpegURL', src: streamUrl });
+                player.play();
+                statusTxt.innerText = "Reproduciendo señal con éxito.";
+            } else {
+                statusTxt.innerText = "No se encontró señal activa en este canal.";
+            }
+        } catch (error) {
+            statusTxt.innerText = "Error al conectar. Intenta de nuevo.";
+            console.error(error);
+        }
+    }
+</script>
+
+</body>
+</html>
