@@ -3,25 +3,94 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <title>FlixCr Pro GitHub Edition</title>
+  <title>FlixCr Pro TV - GitHub Edition</title>
   <style>
-    /* Mantenemos tu estilo original de FlixCr Pro */
-    :root { --bg-dark: #000000; --accent: #00a2ff; --text: #ffffff; }
-    body { background: var(--bg-dark); color: var(--text); font-family: sans-serif; margin: 0; overflow: hidden; }
-    #main-app { display: flex; flex-direction: column; height: 100vh; }
-    #video-container { flex: 1; background: #000; position: relative; }
-    .player-frame { width: 100%; height: 100%; border: none; }
-    #controls-panel { background: rgba(15, 17, 23, 0.98); padding: 15px; border-top: 1px solid #222; }
-    .selection-row { display: flex; gap: 10px; }
-    select { flex: 1; background: #111; color: white; padding: 12px; border-radius: 6px; border: 1px solid #333; }
-    .btn-play { background: var(--accent); color: white; border: none; padding: 12px 25px; border-radius: 6px; font-weight: bold; cursor: pointer; }
-    #status-bar { font-size: 12px; color: #ffcc00; padding: 5px; background: #111; }
+    :root {
+      --bg-dark: #000000;
+      --accent: #00a2ff;
+      --text: #ffffff;
+      --card: rgba(15, 17, 23, 0.98);
+    }
+
+    body, html {
+      margin: 0; padding: 0;
+      width: 100%; height: 100%;
+      background-color: var(--bg-dark);
+      color: var(--text);
+      font-family: 'Segoe UI', sans-serif;
+      overflow: hidden;
+    }
+
+    #main-app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      width: 100vw;
+    }
+
+    #video-container {
+      flex: 1; 
+      background: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+    }
+
+    .player-frame {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    #controls-panel {
+      background: var(--card);
+      padding: 15px;
+      border-top: 1px solid #222;
+      z-index: 100;
+    }
+
+    .selection-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    select {
+      flex: 1;
+      background: #111;
+      color: white;
+      border: 1px solid #333;
+      padding: 12px;
+      border-radius: 6px;
+      font-size: 1rem;
+    }
+
+    .btn-play {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      text-transform: uppercase;
+    }
+
+    #status-bar {
+      background: #111;
+      color: #00a2ff;
+      font-size: 12px;
+      padding: 5px 15px;
+      text-align: left;
+      font-family: monospace;
+    }
   </style>
 </head>
 <body>
 
 <div id="main-app">
-  <div id="status-bar">SISTEMA LISTO - ESPERANDO SELECCIÓN</div>
+  <div id="status-bar">SISTEMA LISTO: Esperando selección...</div>
 
   <div id="video-container">
     <video id="hls-player" class="player-frame" controls playsinline crossorigin="anonymous"></video>
@@ -30,11 +99,13 @@
   <div id="controls-panel">
     <div class="selection-row">
       <select id="stream-select">
-        <option value="https://librefutboltv.su/home1/directv-sports/">DIRECTV SPORTS</option>
-        <option value="https://librefutboltv.su/home1/tudn/">TUDN</option>
-        <option value="https://librefutboltv.su/home1/fox-sports/">FOX SPORTS</option>
-        <option value="https://librefutboltv.su/home1/espn-premium/">ESPN PREMIUM</option>
-        <option value="https://librefutboltv.su/home1/tyc-sports/">TYC SPORTS</option>
+        <optgroup label="LIBRE FUTBOL">
+          <option value="https://librefutboltv.su/home1/directv-sports/">DIRECTV SPORTS</option>
+          <option value="https://librefutboltv.su/home1/tudn/">TUDN</option>
+          <option value="https://librefutboltv.su/home1/fox-sports/">FOX SPORTS</option>
+          <option value="https://librefutboltv.su/home1/espn-premium/">ESPN PREMIUM</option>
+          <option value="https://librefutboltv.su/home1/tyc-sports/">TYC SPORTS</option>
+        </optgroup>
       </select>
       <button id="play-btn" class="btn-play">REPRODUCIR</button>
     </div>
@@ -42,55 +113,71 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
 <script>
+  // CONFIGURACIÓN: Pega aquí la URL que te dio Cloudflare
+  const WORKER_URL = "https://mi-motor-tv.contenedorfileflixcr.workers.dev/?url="; 
+
   const videoEl = document.getElementById('hls-player');
-  const status = document.getElementById('status-bar');
+  const statusBar = document.getElementById('status-bar');
+  const playBtn = document.getElementById('play-btn');
   let hls = null;
 
-  async function searchAndPlay() {
+  async function startScraping() {
     const targetUrl = document.getElementById('stream-select').value;
-    status.innerText = "🔍 BUSCANDO SEÑAL EN TIEMPO REAL CON TU IP...";
     
-    // SOLUCIÓN AL ERROR DE CORE: Usamos un proxy que no está quemado y que fuerza la respuesta en texto plano
-    // cors-anywhere suele fallar, corsproxy.io es mejor para TVs
-    const proxyUrl = "https://corsproxy.io/?" + encodeURIComponent(targetUrl);
+    statusBar.innerText = "🔍 BUSCANDO SEÑAL EN TIEMPO REAL...";
+    statusBar.style.color = "#ffcc00";
+    playBtn.disabled = true;
+    playBtn.innerText = "BUSCANDO...";
 
     try {
-      const response = await fetch(proxyUrl);
-      const html = await response.text();
+      // 1. El navegador de la TV le pide al Worker que "bucee" en la web
+      const response = await fetch(WORKER_URL + encodeURIComponent(targetUrl));
+      const m3u8Url = await response.text();
 
-      // Buscamos el link .m3u8 exactamente como hacía tu script de Python
-      // Buscamos el patrón http...m3u8 que está dentro del código de la página
-      const regex = /https?:\/\/[^"']+\.m3u8[^"']*/;
-      const match = html.match(regex);
-
-      if (match) {
-        let realM3u8 = match[0].replace(/\\/g, ""); // Limpiamos el link de barras raras
-        status.innerText = "✅ SEÑAL ENCONTRADA: REPRODUCIENDO...";
-        startHls(realM3u8);
+      if (m3u8Url && m3u8Url !== "no_encontrado" && m3u8Url.includes("http")) {
+        statusBar.innerText = "✅ SEÑAL ENCONTRADA. CARGANDO VIDEO...";
+        statusBar.style.color = "#00ff00";
+        reproducirHLS(m3u8Url);
       } else {
-        status.innerText = "❌ NO SE ENCONTRÓ LINK M3U8 EN LA PÁGINA.";
+        statusBar.innerText = "❌ NO SE ENCONTRÓ SEÑAL M3U8 ACTIVA.";
+        statusBar.style.color = "#ff4444";
       }
     } catch (e) {
-      status.innerText = "❌ ERROR DE CONEXIÓN: EL SITIO BLOQUEÓ EL ACCESO.";
-      console.error(e);
+      statusBar.innerText = "❌ ERROR DE CONEXIÓN CON EL MOTOR.";
+      statusBar.style.color = "#ff4444";
+    } finally {
+      playBtn.disabled = false;
+      playBtn.innerText = "REPRODUCIR";
     }
   }
 
-  function startHls(url) {
+  function reproducirHLS(url) {
     if (hls) { hls.destroy(); }
+
     if (Hls.isSupported()) {
       hls = new Hls();
       hls.loadSource(url);
       hls.attachMedia(videoEl);
-      hls.on(Hls.Events.MANIFEST_PARSED, () => videoEl.play());
-    } else {
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        videoEl.play().catch(() => statusBar.innerText = "⚠️ REPRODUCCIÓN REQUERIDA MANUALMENTE");
+      });
+      
+      hls.on(Hls.Events.ERROR, function (event, data) {
+        if (data.fatal) {
+           statusBar.innerText = "⚠️ ERROR DE CARGA: REINTENTA";
+        }
+      });
+
+    } else if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
+      // Soporte nativo para Safari/iOS
       videoEl.src = url;
       videoEl.play();
     }
   }
 
-  document.getElementById('play-btn').onclick = searchAndPlay;
+  playBtn.onclick = startScraping;
 </script>
 </body>
 </html>
