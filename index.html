@@ -2,75 +2,81 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Buscador de Señal Directa</title>
+    <title>Buscador Directo v3</title>
     <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet" />
     <style>
-        body { background: #111; color: white; font-family: sans-serif; text-align: center; }
-        .btn-group { margin: 20px; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
-        button { padding: 12px 20px; background: #222; color: #fff; border: 1px solid #444; cursor: pointer; border-radius: 5px; }
-        button:hover { background: #444; }
-        #status { color: #ffcc00; font-weight: bold; margin: 15px; }
-        .video-js { margin: 0 auto; width: 80%; max-width: 900px; }
+        body { background: #000; color: #fff; font-family: sans-serif; text-align: center; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; padding: 20px; }
+        button { padding: 15px; background: #222; color: #fff; border: 2px solid #444; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        button:active { background: #ff0000; }
+        #status { color: #00ff00; background: #111; padding: 10px; margin: 10px; border-radius: 5px; font-family: monospace; }
+        .video-js { margin: 0 auto; width: 100%; max-width: 800px; border: 1px solid #333; }
     </style>
 </head>
 <body>
 
-    <h2>⚡ Buscador de M3U8 en Tiempo Real</h2>
-    <div id="status">Selecciona un canal para iniciar la búsqueda...</div>
+    <div id="status">SISTEMA LISTO: Esperando comando...</div>
 
-    <div class="btn-group">
-        <button onclick="buscarYReproducir('https://librefutboltv.su/home1/directv-sports/')">DIRECTV SPORTS</button>
-        <button onclick="buscarYReproducir('https://librefutboltv.su/home1/tudn/')">TUDN</button>
-        <button onclick="buscarYReproducir('https://librefutboltv.su/home1/fox-sports/')">FOX SPORTS</button>
-        <button onclick="buscarYReproducir('https://librefutboltv.su/home1/espn-premium/')">ESPN PREMIUM</button>
-        <button onclick="buscarYReproducir('https://librefutboltv.su/home1/tyc-sports/')">TYC SPORTS</button>
+    <div class="grid">
+        <button onclick="scrapear('https://librefutboltv.su/home1/directv-sports/')">DIRECTV</button>
+        <button onclick="scrapear('https://librefutboltv.su/home1/tudn/')">TUDN</button>
+        <button onclick="scrapear('https://librefutboltv.su/home1/fox-sports/')">FOX SPORTS</button>
+        <button onclick="scrapear('https://librefutboltv.su/home1/espn-premium/')">ESPN PREMIUM</button>
+        <button onclick="scrapear('https://librefutboltv.su/home1/tyc-sports/')">TYC SPORTS</button>
     </div>
 
-    <video id="reproductor" class="video-js vjs-16-9 vjs-big-play-centered" controls preload="auto"></video>
+    <video id="player" class="video-js vjs-16-9 vjs-big-play-centered" controls preload="auto"></video>
 
-    <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
-    <script>
-        const player = videojs('reproductor');
-        const status = document.getElementById('status');
+<script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
+<script>
+    const player = videojs('player');
+    const status = document.getElementById('status');
 
-        async function buscarYReproducir(urlLibreFutbol) {
-            status.innerText = "🔍 Entrando a la web y buscando link m3u8...";
-            player.pause();
+    async function scrapear(targetUrl) {
+        status.innerText = "📡 ACCEDIENDO A LA FUENTE...";
+        player.pause();
 
-            // Usamos AllOrigins pero con un parámetro para forzar la lectura del contenido
-            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(urlLibreFutbol)}&timestamp=${new Date().getTime()}`;
+        // Probamos con un proxy diferente (CORS-Proxy.io) que es más rápido para TVs
+        const proxy = "https://corsproxy.io/?" + encodeURIComponent(targetUrl);
 
+        try {
+            const response = await fetch(proxy);
+            if (!response.ok) throw new Error("Proxy denegado");
+            
+            const html = await response.text();
+            
+            // Buscamos el link m3u8 tal como hacía tu script de Python
+            // Esta regex es más potente: busca cadenas que terminan en .m3u8 pero ignorando carácteres basura
+            const m3u8Regex = /https?:\/\/[^"']+\.m3u8[^"']*/;
+            const match = html.match(m3u8Regex);
+
+            if (match) {
+                let cleanUrl = match[0].replace(/\\/g, ""); // Limpia barras inclinadas si vienen del JSON
+                status.innerText = "🎯 ¡LINK CAPTURADO! Cargando buffer...";
+                
+                player.src({ type: 'application/x-mpegURL', src: cleanUrl });
+                player.play();
+            } else {
+                status.innerText = "⚠️ CÓDIGO LEÍDO, PERO NO SE HALLÓ M3U8. Intenta otro canal.";
+            }
+        } catch (e) {
+            status.innerText = "❌ ERROR DE PUENTE: Intentando método alternativo...";
+            // Reintento automático con AllOrigins si el primero falla
             try {
-                const response = await fetch(proxyUrl);
-                const data = await response.json();
-                const htmlContenido = data.contents;
-
-                // Aplicamos la misma lógica del script original: buscar el patrón del link .m3u8
-                // Buscamos algo que empiece por http y termine en .m3u8
-                const regexM3U8 = /(https?:\/\/[^"']+\.m3u8[^"']*)/;
-                const match = htmlContenido.match(regexM3U8);
-
-                if (match) {
-                    let m3u8Final = match[0].replace(/\\/g, ""); // Limpiamos barras escapadas
-                    status.innerText = "✅ ¡Link encontrado! Conectando señal...";
-                    
-                    player.src({
-                        type: 'application/x-mpegURL',
-                        src: m3u8Final
-                    });
-                    
-                    player.play().catch(e => {
-                        status.innerText = "⚠️ Link encontrado pero el reproductor fue bloqueado. Intenta de nuevo.";
-                    });
-                } else {
-                    status.innerText = "❌ No se encontró ningún link m3u8 dentro de la página.";
-                    console.log("HTML revisado:", htmlContenido.substring(0, 500)); // Log para depurar
+                const altProxy = "https://api.allorigins.win/get?url=" + encodeURIComponent(targetUrl);
+                const resAlt = await fetch(altProxy);
+                const jsonAlt = await resAlt.json();
+                const matchAlt = jsonAlt.contents.match(/https?:\/\/[^"']+\.m3u8[^"']*/);
+                if (matchAlt) {
+                    player.src({ type: 'application/x-mpegURL', src: matchAlt[0].replace(/\\/g, "") });
+                    player.play();
+                    status.innerText = "✅ SEÑAL RECUPERADA (Vía Alt).";
                 }
-            } catch (error) {
-                status.innerText = "❌ Error al intentar acceder a la web puente.";
-                console.error(error);
+            } catch (e2) {
+                status.innerText = "🚫 BLOQUEO TOTAL: El sitio de deportes rechaza la conexión.";
             }
         }
-    </script>
+    }
+</script>
 </body>
 </html>
