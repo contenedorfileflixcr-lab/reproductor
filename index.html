@@ -1,68 +1,22 @@
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
   <title>FlixCr Pro TV</title>
   <style>
     :root { --bg: #000; --accent: #00a2ff; }
-    body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: var(--bg); color: #fff; font-family: sans-serif; overflow: hidden; }
+    body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: var(--bg); color: #fff; overflow: hidden; font-family: sans-serif; }
     #main-app { display: flex; flex-direction: column; height: 100vh; }
+    #video-container { flex: 1; background: #000; position: relative; }
     
-    /* Contenedor de Video */
-    #video-container {
-      flex: 1;
-      background: #000;
-      position: relative;
-    }
+    /* Este es el truco: un iframe que cargue el reproductor ya configurado */
+    iframe { width: 100%; height: 100%; border: none; background: #000; }
 
-    /* Iframe maximizado */
-    iframe {
-      width: 100%;
-      height: 100%;
-      border: none;
-      background: #000;
-    }
-
-    /* Panel de controles inferior */
-    #controls {
-      background: #0f1117;
-      padding: 15px;
-      border-top: 1px solid #222;
-      display: flex;
-      gap: 10px;
-    }
-
-    select {
-      flex: 1;
-      background: #1a1d24;
-      color: #fff;
-      border: 1px solid #333;
-      padding: 12px;
-      border-radius: 5px;
-      font-size: 16px;
-    }
-
-    button {
-      background: var(--accent);
-      color: #fff;
-      border: none;
-      padding: 0 25px;
-      border-radius: 5px;
-      font-weight: bold;
-      cursor: pointer;
-      text-transform: uppercase;
-    }
-
-    #status {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      font-size: 10px;
-      color: var(--accent);
-      background: rgba(0,0,0,0.5);
-      padding: 2px 5px;
-    }
+    #controls { background: #0f1117; padding: 15px; border-top: 1px solid #222; display: flex; gap: 10px; }
+    select { flex: 1; background: #1a1d24; color: #fff; border: 1px solid #333; padding: 12px; border-radius: 6px; font-size: 1rem; }
+    button { background: var(--accent); color: #fff; border: none; padding: 0 30px; border-radius: 6px; font-weight: bold; cursor: pointer; text-transform: uppercase; }
+    #status { position: absolute; top: 10px; left: 10px; font-size: 11px; color: var(--accent); background: rgba(0,0,0,0.7); padding: 5px 10px; border-radius: 4px; }
   </style>
 </head>
 <body>
@@ -70,47 +24,43 @@
 <div id="main-app">
   <div id="video-container">
     <div id="status">SISTEMA LISTO</div>
-    <iframe id="player" 
-            allow="autoplay; fullscreen" 
-            sandbox="allow-scripts allow-same-origin allow-forms"
-            src="about:blank"></iframe>
+    <iframe id="main-player" allow="autoplay; fullscreen" src=""></iframe>
   </div>
 
   <div id="controls">
     <select id="canal-select">
-      <optgroup label="DIRECTV SPORTS">
-        <option value="https://elcanaldeportivo.com/directvsports.php">DSports Principal</option>
-        <option value="https://la14hd.com/vivo/canal.php?stream=dsports">DSports Alterno</option>
-      </optgroup>
-      <optgroup label="ESPN / FOX">
-        <option value="https://la14hd.com/vivo/canal.php?stream=espnpremium">ESPN Premium</option>
-        <option value="https://la14hd.com/vivo/canal.php?stream=foxsports">Fox Sports</option>
-      </optgroup>
-      <optgroup label="OTROS">
-        <option value="https://la14hd.com/vivo/canal.php?stream=tyc">TyC Sports</option>
-        <option value="https://la14hd.com/vivo/canal.php?stream=tudn">TUDN</option>
-      </optgroup>
+      <option value="https://la14hd.com/vivo/canal.php?stream=dsports">DIRECTV SPORTS</option>
+      <option value="https://la14hd.com/vivo/canal.php?stream=espnpremium">ESPN PREMIUM</option>
+      <option value="https://la14hd.com/vivo/canal.php?stream=foxsports2">FOX SPORTS 2</option>
+      <option value="https://la14hd.com/vivo/canal.php?stream=tyc">TYC SPORTS</option>
+      <option value="https://la14hd.com/vivo/canal.php?stream=tudn">TUDN</option>
     </select>
-    <button onclick="reproducir()">Ver Ahora</button>
+    <button onclick="reproducir()">REPRODUCIR</button>
   </div>
 </div>
 
 <script>
-  const player = document.getElementById('player');
+  const player = document.getElementById('main-player');
   const status = document.getElementById('status');
 
   function reproducir() {
     const url = document.getElementById('canal-select').value;
-    status.innerText = "CONECTANDO CON EL SERVIDOR...";
+    status.innerText = "SINTONIZANDO SEÑAL...";
     
-    // Limpiamos el iframe antes de cargar el nuevo para evitar ruidos de fondo
+    // Reset para evitar caché de errores
     player.src = "about:blank";
     
     setTimeout(() => {
+      // Cargamos la URL del servidor que ya maneja el HLS internamente
       player.src = url;
-      status.innerText = "SEÑAL ACTIVA - USA EL MANDO PARA PANTALLA COMPLETA";
-    }, 100);
+      status.innerText = "SEÑAL EN LINEA";
+    }, 200);
   }
+
+  // Soporte para control remoto (Enter)
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') reproducir();
+  });
 </script>
 
 </body>
