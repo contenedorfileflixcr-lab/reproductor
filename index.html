@@ -1,36 +1,43 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
-  <title>FlixCr Pro TV - AutoPlay Fix</title>
+  <title>FlixCr Pro TV - Anti-Ads</title>
   <style>
     :root { --bg: #000; --accent: #00a2ff; }
-    body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: var(--bg); color: #fff; overflow: hidden; font-family: sans-serif; }
+    body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: var(--bg); overflow: hidden; font-family: sans-serif; }
     #main-app { display: flex; flex-direction: column; height: 100vh; }
-    #video-container { flex: 1; background: #000; position: relative; overflow: hidden; }
     
-    /* El truco del zoom: Escalar un poco el iframe oculta los bordes con publicidad */
+    /* El contenedor ahora es un escudo */
+    #video-container { 
+      flex: 1; 
+      background: #000; 
+      position: relative;
+    }
+
     iframe { 
       width: 100%; 
       height: 100%; 
       border: none; 
       background: #000;
-      transform: scale(1.01); 
     }
 
-    #controls { background: #0f1117; padding: 15px; border-top: 1px solid #222; display: flex; gap: 10px; z-index: 10; }
+    #controls { background: #0f1117; padding: 15px; border-top: 1px solid #222; display: flex; gap: 10px; z-index: 100; }
     select { flex: 1; background: #1a1d24; color: #fff; border: 1px solid #333; padding: 12px; border-radius: 6px; font-size: 1rem; }
-    button { background: var(--accent); color: #fff; border: none; padding: 0 30px; border-radius: 6px; font-weight: bold; cursor: pointer; text-transform: uppercase; }
-    #status { position: absolute; top: 10px; left: 10px; font-size: 11px; color: var(--accent); background: rgba(0,0,0,0.7); padding: 5px 10px; border-radius: 4px; z-index: 20; }
+    button { background: var(--accent); color: #fff; border: none; padding: 0 30px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+    #status { position: absolute; top: 10px; left: 10px; font-size: 11px; color: var(--accent); z-index: 110; background: rgba(0,0,0,0.7); padding: 4px 8px; }
   </style>
 </head>
 <body>
 
 <div id="main-app">
+  <div id="status">SISTEMA ANTI-ADS ACTIVO</div>
   <div id="video-container">
-    <div id="status">SISTEMA LISTO</div>
-    <iframe id="main-player" allow="autoplay; fullscreen; encrypted-media" src="" scrolling="no"></iframe>
+    <iframe id="main-player" 
+            allow="autoplay; fullscreen; encrypted-media" 
+            sandbox="allow-scripts allow-same-origin allow-forms"
+            src=""></iframe>
   </div>
 
   <div id="controls">
@@ -40,7 +47,7 @@
       <option value="https://la14hd.com/vivo/canal.php?stream=foxsports2">FOX SPORTS 2</option>
       <option value="https://la14hd.com/vivo/canal.php?stream=tyc">TYC SPORTS</option>
     </select>
-    <button id="play-btn" onclick="reproducir()">VER CANAL</button>
+    <button onclick="reproducir()">VER AHORA</button>
   </div>
 </div>
 
@@ -50,29 +57,13 @@
 
   function reproducir() {
     const url = document.getElementById('canal-select').value;
-    status.innerText = "Cargando... Si no inicia, presiona OK en tu control.";
-    
+    status.innerText = "Sintonizando... Haz clic en el centro del video.";
     player.src = "about:blank";
     
     setTimeout(() => {
-      // Cargamos la URL
       player.src = url;
-      
-      // Intentamos dar foco al iframe para que el control remoto funcione ahí dentro
-      player.focus();
     }, 200);
   }
-
-  // Soporte para control remoto
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-        const active = document.activeElement;
-        if(active.tagName !== 'SELECT' && active.id !== 'play-btn') {
-            reproducir();
-        }
-    }
-  });
 </script>
-
 </body>
 </html>
