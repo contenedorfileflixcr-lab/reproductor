@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
-  <title>FlixCr Pro - Fix Play</title>
+  <title>FlixCr Pro - Fix Click</title>
   <style>
     :root { --bg: #000; --accent: #00a2ff; }
-    body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: var(--bg); overflow: hidden; font-family: sans-serif; }
+    body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: var(--bg); color: #fff; overflow: hidden; font-family: sans-serif; }
     #main-app { display: flex; flex-direction: column; height: 100vh; }
     
     #video-container { 
@@ -29,17 +29,25 @@
 
     select { flex: 1; background: #1a1d24; color: #fff; border: 1px solid #333; padding: 12px; border-radius: 6px; font-size: 1rem; }
     button { background: var(--accent); color: #fff; border: none; padding: 0 25px; border-radius: 6px; font-weight: bold; cursor: pointer; }
-    #status { position: absolute; top: 10px; left: 10px; font-size: 11px; color: #00ff00; z-index: 110; background: rgba(0,0,0,0.8); padding: 4px 8px; border-radius: 4px; pointer-events: none; }
+    
+    /* Mensaje flotante */
+    #status { 
+      position: absolute; top: 15px; left: 15px; font-size: 12px; 
+      color: #00ff00; z-index: 110; background: rgba(0,0,0,0.85); 
+      padding: 8px 12px; border-radius: 5px; border: 1px solid #333;
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
 
 <div id="main-app">
+  <div id="status">SISTEMA INICIADO</div>
+  
   <div id="video-container">
-    <div id="status">SISTEMA RE-ESTABLECIDO</div>
     <iframe id="main-player" 
             allow="autoplay; fullscreen; encrypted-media" 
-            sandbox="allow-scripts allow-same-origin allow-forms allow-pointer-lock"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-presentation allow-popups"
             src="about:blank"></iframe>
   </div>
 
@@ -50,7 +58,7 @@
       <option value="https://la14hd.com/vivo/canal.php?stream=espnpremium">ESPN PREMIUM</option>
       <option value="https://la14hd.com/vivo/canal.php?stream=foxsports2">FOX SPORTS 2</option>
     </select>
-    <button onclick="reproducir()">CARGAR CANAL</button>
+    <button onclick="reproducir()">VER AHORA</button>
   </div>
 </div>
 
@@ -60,16 +68,21 @@
 
   function reproducir() {
     const url = document.getElementById('canal-select').value;
-    status.innerText = "SINTONIZANDO... ESPERE";
+    status.innerText = "SINTONIZANDO... (Si sale publicidad, solo ciérrala)";
+    
+    // Limpieza de carga
     player.src = "about:blank";
     
     setTimeout(() => {
       player.src = url;
-      status.innerText = "SEÑAL LISTA. Presiona OK en el centro del video.";
-      // Forzamos el foco al reproductor
-      player.focus();
-    }, 300);
+    }, 200);
   }
+
+  // Escuchar si el iframe intenta hacer algo raro
+  window.onblur = function() {
+    status.innerText = "¡ANUNCIO BLOQUEADO! Vuelve a la pestaña del video.";
+    setTimeout(() => { status.innerText = "SEÑAL ACTIVA"; }, 3000);
+  };
 </script>
 </body>
 </html>
