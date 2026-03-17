@@ -3,73 +3,50 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
-  <title>FlixCr Pro - Ultra Shield</title>
+  <title>FlixCr Pro - TV Unstoppable</title>
   <style>
     :root { --bg: #000; --accent: #00a2ff; }
-    body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: var(--bg); overflow: hidden; font-family: 'Segoe UI', sans-serif; }
+    body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: var(--bg); overflow: hidden; font-family: sans-serif; }
     #main-app { display: flex; flex-direction: column; height: 100vh; }
     
-    /* Contenedor con escudo */
     #video-container { 
       flex: 1; 
       background: #000; 
       position: relative;
-      overflow: hidden;
     }
 
-    /* El Iframe se escala un 2% para "empujar" anuncios de borde fuera de la pantalla */
     iframe { 
       width: 100%; 
       height: 100%; 
       border: none; 
       background: #000;
-      transform: scale(1.02);
+    }
+
+    /* CAPA DESBLOQUEADORA: Si el botón se bloquea, esta capa ayuda a forzar el click */
+    #glass-layer {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      z-index: 50;
+      display: none; /* Se activa solo al cargar */
+      cursor: pointer;
     }
 
     #controls { 
-      background: #0f1117; 
-      padding: 15px; 
-      border-top: 1px solid #222; 
-      display: flex; 
-      gap: 10px; 
-      z-index: 100; 
+      background: #0f1117; padding: 15px; border-top: 1px solid #222; 
+      display: flex; gap: 10px; z-index: 100; 
     }
 
-    select { 
-      flex: 1; 
-      background: #1a1d24; 
-      color: #fff; 
-      border: 1px solid #333; 
-      padding: 12px; 
-      border-radius: 6px; 
-      font-size: 1rem;
-      outline: none;
-    }
-
-    button { 
-      background: var(--accent); 
-      color: #fff; 
-      border: none; 
-      padding: 0 30px; 
-      border-radius: 6px; 
-      font-weight: bold; 
-      cursor: pointer;
-      box-shadow: 0 4px 0 #007acc;
-    }
+    select { flex: 1; background: #1a1d24; color: #fff; border: 1px solid #333; padding: 12px; border-radius: 6px; font-size: 1rem; }
     
-    button:active { transform: translateY(2px); box-shadow: none; }
+    button { 
+      background: var(--accent); color: #fff; border: none; padding: 0 25px; 
+      border-radius: 6px; font-weight: bold; cursor: pointer;
+    }
 
     #status { 
-      position: absolute; 
-      bottom: 80px; 
-      left: 10px; 
-      font-size: 11px; 
-      color: #00ff00; 
-      z-index: 110; 
-      background: rgba(0,0,0,0.8); 
-      padding: 4px 8px;
-      border-radius: 4px;
-      pointer-events: none;
+      position: absolute; top: 10px; left: 10px; font-size: 11px; 
+      color: #00ff00; z-index: 110; background: rgba(0,0,0,0.8); 
+      padding: 4px 8px; border-radius: 4px; pointer-events: none;
     }
   </style>
 </head>
@@ -77,18 +54,20 @@
 
 <div id="main-app">
   <div id="video-container">
-    <div id="status">ESCUDO ACTIVADO</div>
+    <div id="status">SISTEMA LISTO</div>
+    
+    <div id="glass-layer" onclick="desbloquear()"></div>
+
     <iframe id="main-player" 
-            allow="autoplay; fullscreen; encrypted-media" 
+            allow="autoplay; fullscreen" 
             sandbox="allow-scripts allow-same-origin allow-forms"
             src="about:blank"></iframe>
   </div>
 
   <div id="controls">
     <select id="canal-select">
-      <option value="https://la14hd.com/vivo/canal.php?stream=dsports">DIRECTV SPORTS (Servidor 1)</option>
-      <option value="https://elcanaldeportivo.com/directvsports.php">DIRECTV SPORTS (Servidor 2)</option>
-      <option value="https://la14hd.com/vivo/canal.php?stream=tyc">TYC SPORTS (Oficial)</option>
+      <option value="https://la14hd.com/vivo/canal.php?stream=dsports">DIRECTV SPORTS</option>
+      <option value="https://la14hd.com/vivo/canal.php?stream=tyc">TYC SPORTS</option>
       <option value="https://la14hd.com/vivo/canal.php?stream=espnpremium">ESPN PREMIUM</option>
       <option value="https://la14hd.com/vivo/canal.php?stream=foxsports2">FOX SPORTS 2</option>
     </select>
@@ -98,19 +77,24 @@
 
 <script>
   const player = document.getElementById('main-player');
+  const glass = document.getElementById('glass-layer');
   const status = document.getElementById('status');
 
   function reproducir() {
     const url = document.getElementById('canal-select').value;
-    status.innerText = "BLOQUEANDO PUBLICIDAD... ESPERE";
-    
-    // Limpieza total antes de cargar
+    status.innerText = "CARGANDO... ESPERA 3 SEGUNDOS";
     player.src = "about:blank";
+    glass.style.display = "block"; // Activamos la capa protectora
     
     setTimeout(() => {
       player.src = url;
-      status.innerText = "SEÑAL LISTA. Presiona OK dos veces si hay un cartel.";
     }, 300);
+  }
+
+  function desbloquear() {
+    // Al hacer clic aquí, "quemamos" el evento que el iframe bloqueaba
+    glass.style.display = "none"; 
+    status.innerText = "PANTALLA LIMPIA. Presiona el Play del video ahora.";
   }
 </script>
 </body>
