@@ -3,28 +3,55 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
-  <title>FlixCr Pro - Unblocked</title>
+  <title>FlixCr Pro - Shield Mode</title>
   <style>
     :root { --bg: #000; --accent: #00a2ff; }
     body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: var(--bg); overflow: hidden; font-family: sans-serif; }
     #main-app { display: flex; flex-direction: column; height: 100vh; }
-    #video-container { flex: 1; background: #000; position: relative; }
     
-    /* Iframe limpio sin sandbox restrictivo */
-    iframe { width: 100%; height: 100%; border: none; background: #000; }
+    #video-container { 
+      flex: 1; 
+      background: #000; 
+      position: relative;
+      overflow: hidden; /* Corta los anuncios de los bordes */
+    }
+
+    iframe { 
+      width: 106%; /* Zoom para ocultar bordes con banners */
+      height: 106%; 
+      margin-left: -3%;
+      margin-top: -3%;
+      border: none; 
+      background: #000;
+    }
+
+    /* EL ESCUDO: Atrapa el clic publicitario antes de que llegue al iframe */
+    #shield {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.01);
+      z-index: 50;
+      display: none;
+      cursor: pointer;
+    }
 
     #controls { background: #0f1117; padding: 15px; border-top: 1px solid #222; display: flex; gap: 10px; z-index: 100; }
     select { flex: 1; background: #1a1d24; color: #fff; border: 1px solid #333; padding: 12px; border-radius: 6px; font-size: 1rem; }
     button { background: var(--accent); color: #fff; border: none; padding: 0 30px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+    
     #status { position: absolute; top: 10px; left: 10px; font-size: 11px; color: #00ff00; z-index: 110; background: rgba(0,0,0,0.8); padding: 4px 8px; border-radius: 4px; }
   </style>
 </head>
 <body>
 
 <div id="main-app">
-  <div id="status">SISTEMA LIBRE</div>
+  <div id="status">ESCUDO ANTI-ADS NIVEL 2</div>
   <div id="video-container">
-    <iframe id="main-player" allow="autoplay; fullscreen" src=""></iframe>
+    <div id="shield" onclick="romperPublicidad()"></div>
+    <iframe id="main-player" 
+            allow="autoplay; fullscreen" 
+            sandbox="allow-scripts allow-same-origin allow-forms" 
+            src=""></iframe>
   </div>
 
   <div id="controls">
@@ -33,25 +60,33 @@
       <option value="https://la14hd.com/vivo/canal.php?stream=tyc">TYC SPORTS</option>
       <option value="https://la14hd.com/vivo/canal.php?stream=espnpremium">ESPN PREMIUM</option>
       <option value="https://la14hd.com/vivo/canal.php?stream=foxsports2">FOX SPORTS 2</option>
-      <option value="https://la14hd.com/vivo/canal.php?stream=tudn">TUDN</option>
     </select>
-    <button onclick="reproducir()">REPRODUCIR</button>
+    <button onclick="prepararCanal()">CARGAR</button>
   </div>
 </div>
 
 <script>
   const player = document.getElementById('main-player');
+  const shield = document.getElementById('shield');
   const status = document.getElementById('status');
 
-  function reproducir() {
+  function prepararCanal() {
     const url = document.getElementById('canal-select').value;
-    status.innerText = "CONECTANDO... Si se abre publicidad, ciérrala y vuelve.";
-    
-    // El truco: Resetear el iframe y cargar la URL limpia
+    status.innerText = "PREPARANDO ESCUDO...";
     player.src = "about:blank";
+    
     setTimeout(() => {
       player.src = url;
-    }, 150);
+      shield.style.display = "block"; // Activamos la capa protectora
+      status.innerText = "LISTO. Haz clic una vez para limpiar.";
+    }, 300);
+  }
+
+  function romperPublicidad() {
+    // Al hacer clic aquí, el navegador intenta abrir la publicidad
+    // pero el Sandbox lo bloquea porque no tiene permiso de popups.
+    shield.style.display = "none"; 
+    status.innerText = "PUBLICIDAD BLOQUEADA. Dale Play al video.";
   }
 </script>
 </body>
