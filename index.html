@@ -3,13 +3,12 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <title>FlixCr Pro TV - GitHub Edition</title>
+  <title>FlixCr Pro TV - Native Player</title>
   <style>
     :root {
       --bg-dark: #000000;
       --accent: #00a2ff;
       --text: #ffffff;
-      --card: rgba(15, 17, 23, 0.98);
     }
 
     body, html {
@@ -17,47 +16,34 @@
       width: 100%; height: 100%;
       background-color: var(--bg-dark);
       color: var(--text);
-      font-family: 'Segoe UI', Roboto, sans-serif;
+      font-family: sans-serif;
       overflow: hidden;
     }
 
-    #main-app {
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-      width: 100vw;
-    }
+    #main-app { display: flex; flex-direction: column; height: 100vh; }
 
-    /* CONTENEDOR DE VIDEO MAXIMIZADO */
     #video-container {
       flex: 1; 
       background: #000;
       display: flex;
       justify-content: center;
       align-items: center;
-      position: relative;
     }
 
-    .player-frame {
+    /* Video nativo ocupa todo el espacio */
+    video {
       width: 100%;
       height: 100%;
-      object-fit: contain;
+      background: #000;
     }
 
-    /* PANEL DE CONTROL ESTILO TV */
     #controls-panel {
-      background: var(--card);
-      padding: 15px 20px;
+      background: rgba(15, 17, 23, 0.98);
+      padding: 15px;
       border-top: 1px solid #222;
-      box-shadow: 0 -5px 25px rgba(0,0,0,0.9);
-      z-index: 100;
     }
 
-    .selection-row {
-      display: flex;
-      gap: 15px;
-      align-items: center;
-    }
+    .selection-row { display: flex; gap: 10px; }
 
     select {
       flex: 1;
@@ -66,48 +52,35 @@
       border: 1px solid #333;
       padding: 12px;
       border-radius: 6px;
-      font-size: 1rem;
-      outline: none;
-    }
-
-    select:focus {
-      border-color: var(--accent);
+      font-size: 16px;
     }
 
     .btn-play {
       background: var(--accent);
       color: white;
       border: none;
-      padding: 12px 35px;
+      padding: 12px 25px;
       border-radius: 6px;
       font-weight: bold;
       cursor: pointer;
-      text-transform: uppercase;
-      transition: transform 0.2s;
-    }
-
-    .btn-play:focus {
-      outline: 2px solid white;
-      transform: scale(1.05);
     }
 
     #status-bar {
       background: #0a0a0a;
       color: #00a2ff;
-      font-size: 11px;
-      padding: 5px 20px;
+      font-size: 12px;
+      padding: 5px 15px;
       font-family: monospace;
-      border-bottom: 1px solid #111;
     }
   </style>
 </head>
 <body>
 
 <div id="main-app">
-  <div id="status-bar">SISTEMA INICIALIZADO: Esperando acción del usuario...</div>
+  <div id="status-bar">SISTEMA NATIVO LISTO</div>
 
   <div id="video-container">
-    <video id="hls-player" class="player-frame" controls playsinline></video>
+    <video id="reproductor-pro" controls autoplay playsinline name="media"></video>
   </div>
 
   <div id="controls-panel">
@@ -124,93 +97,44 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-
 <script>
-  // URL DE TU WORKER DE CLOUDFLARE
   const WORKER_URL = "https://mi-motor-tv.contenedorfileflixcr.workers.dev/"; 
-
-  const videoEl = document.getElementById('hls-player');
+  const videoEl = document.getElementById('reproductor-pro');
   const statusBar = document.getElementById('status-bar');
   const playBtn = document.getElementById('play-btn');
-  const streamSelect = document.getElementById('stream-select');
-  let hls = null;
 
   async function ejecutarCaptura() {
-    const canal = streamSelect.value;
+    const canal = document.getElementById('stream-select').value;
     
-    // Feedback visual
-    statusBar.innerText = `🔍 ESCANEANDO SERVIDORES PARA: ${canal.toUpperCase()}...`;
-    statusBar.style.color = "#00a2ff";
-    playBtn.innerText = "BUSCANDO...";
-    playBtn.disabled = true;
+    statusBar.innerText = "🔍 SOLICITANDO TOKEN AL MOTOR...";
+    playBtn.innerText = "Cargando...";
 
     try {
-      // Llamada al Worker (el cerebro que usa tu lógica de playbackURL)
-      // Enviamos el canal como parámetro por si quieres expandir el worker luego
+      // Llamamos al worker que tiene tu lógica de servidores
       const response = await fetch(`${WORKER_URL}?canal=${canal}`);
       const m3u8Real = await response.text();
 
       if (m3u8Real && m3u8Real !== "no_encontrado" && m3u8Real.includes("http")) {
-        statusBar.innerText = "✅ TOKEN CAPTURADO CON ÉXITO. INICIANDO STREAM...";
-        statusBar.style.color = "#00ff00";
-        lanzarReproductor(m3u8Real);
+        statusBar.innerText = "✅ SEÑAL RECIBIDA. INICIANDO...";
+        
+        // Carga directa en el elemento de video nativo
+        videoEl.src = m3u8Real;
+        videoEl.load();
+        videoEl.play().catch(err => {
+            statusBar.innerText = "⚠️ PRESIONA PLAY EN EL VIDEO";
+        });
+
       } else {
-        statusBar.innerText = "❌ ERROR: LOS SERVIDORES NO ENTREGARON EL TOKEN ACTUALIZADO.";
-        statusBar.style.color = "#ff4444";
+        statusBar.innerText = "❌ ERROR: EL MOTOR NO OBTUVO EL LINK.";
       }
     } catch (e) {
-      statusBar.innerText = "❌ ERROR: FALLO DE COMUNICACIÓN CON EL CLOUDFLARE WORKER.";
-      statusBar.style.color = "#ff4444";
-      console.error(e);
+      statusBar.innerText = "❌ ERROR DE CONEXIÓN.";
     } finally {
       playBtn.innerText = "REPRODUCIR";
-      playBtn.disabled = false;
     }
   }
 
-  function lanzarReproductor(url) {
-    // Limpiar instancia previa de HLS
-    if (hls) {
-      hls.destroy();
-    }
-
-    if (Hls.isSupported()) {
-      hls = new Hls({
-        enableWorker: true,
-        lowLatencyMode: true
-      });
-      hls.loadSource(url);
-      hls.attachMedia(videoEl);
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        videoEl.play().catch(() => {
-            statusBar.innerText = "⚠️ REPRODUCCIÓN BLOQUEADA: PRESIONA PLAY EN EL VIDEO";
-        });
-      });
-      
-      hls.on(Hls.Events.ERROR, function (event, data) {
-        if (data.fatal) {
-          statusBar.innerText = "⚠️ ERROR FATAL DE STREAM. REINTENTANDO...";
-          hls.startLoad();
-        }
-      });
-
-    } else if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
-      // Soporte nativo (Safari / iOS / Algunas Smart TV)
-      videoEl.src = url;
-      videoEl.play();
-    }
-  }
-
-  // Evento del botón
   playBtn.onclick = ejecutarCaptura;
-
-  // Soporte para control remoto (Enter)
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && document.activeElement !== playBtn && document.activeElement !== streamSelect) {
-      playBtn.click();
-    }
-  });
 </script>
 
 </body>
