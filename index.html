@@ -2,118 +2,104 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
-  <title>FlixCr Pro - Ultimate Switch</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>FlixCr Pro TV</title>
   <style>
     :root { --bg: #000; --accent: #00a2ff; }
     body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: var(--bg); color: #fff; overflow: hidden; font-family: sans-serif; }
+    
     #main-app { display: flex; flex-direction: column; height: 100vh; }
     
-    #video-container { flex: 1; background: #000; position: relative; }
-    
-    /* Estilos basados en tu código de referencia */
-    video, iframe { width: 100%; height: 100%; border: none; display: none; background: #000; }
-
-    /* BOTÓN DE DESBLOQUEO FLOTANTE */
-    #unlock-trigger {
-      position: absolute;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 200;
-      background: rgba(0, 162, 255, 0.9);
-      color: white;
-      border: none;
-      padding: 20px 40px;
-      border-radius: 50px;
-      font-weight: bold;
-      font-size: 1.2rem;
-      cursor: pointer;
-      display: none; /* Solo sale cuando cargamos canal */
-      box-shadow: 0 0 20px rgba(0,0,0,0.5);
+    /* Contenedor de Video: El truco es que el iframe sea más grande que la pantalla */
+    #video-container { 
+      flex: 1; 
+      background: #000; 
+      position: relative; 
+      overflow: hidden; 
     }
 
-    #controls { background: #0f1117; padding: 15px; border-top: 1px solid #222; display: flex; gap: 10px; z-index: 100; }
-    select { flex: 1; background: #1a1d24; color: #fff; border: 1px solid #333; padding: 12px; border-radius: 6px; font-size: 1rem; }
-    button.play-btn { background: var(--accent); color: #fff; border: none; padding: 0 25px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+    iframe { 
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; 
+      height: 100%; 
+      border: none; 
+      background: #000;
+      z-index: 10;
+    }
+
+    /* CAPA DE DESBLOQUEO: Esta capa se pone encima solo al principio */
+    #glass-shield {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.01); /* Casi invisible */
+      z-index: 20;
+      display: none;
+      cursor: pointer;
+    }
+
+    #controls { 
+      background: #0f1117; padding: 12px; border-top: 1px solid #222; 
+      display: flex; gap: 8px; z-index: 100; 
+    }
+
+    select { flex: 1; background: #1a1d24; color: #fff; border: 1px solid #333; padding: 10px; border-radius: 5px; font-size: 14px; }
+    button { background: var(--accent); color: #fff; border: none; padding: 0 20px; border-radius: 5px; font-weight: bold; cursor: pointer; }
     
-    #status { position: absolute; top: 10px; left: 10px; font-size: 11px; color: #00ff00; z-index: 210; background: rgba(0,0,0,0.8); padding: 4px 8px; border-radius: 4px; pointer-events: none; }
+    #status-msg { 
+      position: absolute; top: 10px; left: 10px; font-size: 11px; 
+      color: #00ff00; z-index: 30; background: rgba(0,0,0,0.7); 
+      padding: 4px 8px; border-radius: 3px; pointer-events: none;
+    }
   </style>
 </head>
 <body>
 
 <div id="main-app">
-  <div id="status">SISTEMA HÍBRIDO LISTO</div>
-  
   <div id="video-container">
-    <button id="unlock-trigger" onclick="fixAndPlay()">LIMPIAR Y REPRODUCIR</button>
-    
-    <video id="hls-player" controls playsinline></video>
-    <iframe id="iframe-player" allow="autoplay; fullscreen" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+    <div id="status-msg">ESPERANDO CANAL...</div>
+    <div id="glass-shield" onclick="cleanAds()"></div>
+    <iframe id="main-iframe" allow="autoplay; fullscreen" src=""></iframe>
   </div>
 
   <div id="controls">
-    <select id="stream-select">
-      <option value="iframe|https://la14hd.com/vivo/canal.php?stream=dsports">DIRECTV SPORTS</option>
-      <option value="iframe|https://la14hd.com/vivo/canal.php?stream=tyc">TYC SPORTS</option>
-      <option value="iframe|https://la14hd.com/vivo/canal.php?stream=espnpremium">ESPN PREMIUM</option>
-      <option value="hls|https://clmvp-espn-premium.starlive.xyz/espn_premium/index.m3u8">ESPN (LINK DIRECTO)</option>
+    <select id="canal-select">
+      <option value="https://la14hd.com/vivo/canal.php?stream=dsports">DIRECTV SPORTS</option>
+      <option value="https://la14hd.com/vivo/canal.php?stream=tyc">TYC SPORTS</option>
+      <option value="https://la14hd.com/vivo/canal.php?stream=espnpremium">ESPN PREMIUM</option>
+      <option value="https://la14hd.com/vivo/canal.php?stream=foxsports2">FOX SPORTS 2</option>
     </select>
-    <button class="play-btn" onclick="initLoad()">CARGAR</button>
+    <button onclick="loadStream()">CARGAR</button>
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 <script>
-  const videoEl = document.getElementById('hls-player');
-  const iframeEl = document.getElementById('iframe-player');
-  const unlockBtn = document.getElementById('unlock-trigger');
-  const status = document.getElementById('status');
-  let hls = null;
+  const iframe = document.getElementById('main-iframe');
+  const shield = document.getElementById('glass-shield');
+  const status = document.getElementById('status-msg');
 
-  function initLoad() {
-    const rawValue = document.getElementById('stream-select').value;
-    const [type, url] = rawValue.split('|');
+  function loadStream() {
+    const url = document.getElementById('canal-select').value;
+    status.innerText = "SINTONIZANDO... POR FAVOR ESPERA";
     
-    status.innerText = "SINTONIZANDO...";
-    unlockBtn.style.display = "none";
+    // Limpieza
+    iframe.src = "about:blank";
+    shield.style.display = "none";
 
-    if (type === 'iframe') {
-      // Lógica de tu código: ocultar video, mostrar iframe
-      videoEl.style.display = 'none';
-      videoEl.pause();
-      iframeEl.style.display = 'block';
-      iframeEl.src = url;
-      
-      // Mostrar el "limpiador" después de 2 segundos
+    setTimeout(() => {
+      iframe.src = url;
+      // Activamos el escudo 2 segundos después de cargar
       setTimeout(() => {
-        unlockBtn.style.display = "block";
-        status.innerText = "¡DALE AL BOTÓN AZUL PARA DESBLOQUEAR!";
+        shield.style.display = "block";
+        status.innerText = "PRESIONA UNA VEZ EL VIDEO PARA LIMPIAR";
       }, 2000);
-
-    } else {
-      // Lógica HLS
-      iframeEl.style.display = 'none';
-      iframeEl.src = '';
-      videoEl.style.display = 'block';
-
-      if (Hls.isSupported()) {
-        if (hls) hls.destroy();
-        hls = new Hls();
-        hls.loadSource(url);
-        hls.attachMedia(videoEl);
-        hls.on(Hls.Events.MANIFEST_PARSED, () => videoEl.play());
-      }
-    }
+    }, 200);
   }
 
-  function fixAndPlay() {
-    // Esta función simula el clic que el iframe está esperando
-    // y oculta el botón para dejar ver el video.
-    unlockBtn.style.display = "none";
-    status.innerText = "INTENTANDO AUTO-PLAY...";
-    
-    // Enfocamos el iframe para que el OK del control remoto funcione
-    iframeEl.focus();
+  function cleanAds() {
+    // Al tocar el escudo, lo quitamos para que el siguiente clic vaya al Play
+    shield.style.display = "none";
+    status.innerText = "LISTO: DALE PLAY AL VIDEO";
   }
 </script>
 </body>
